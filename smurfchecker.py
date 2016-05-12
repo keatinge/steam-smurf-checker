@@ -30,7 +30,9 @@ class User:
         assert self.isProfilePublic == True, "Cant get playtime stats for private profile"
 
         reqUrl = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=" + APIKEY + "&steamid=" + self.steamID64
-        resp = requests.get(reqUrl).text
+
+        #resp = requests.get(reqUrl).text
+        resp = api_call(reqUrl)
 
         jsonResp = json.loads(resp)
 
@@ -57,7 +59,8 @@ class User:
 
 
         url = "http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=" + APIKEY + "&steamid=" + self.steamID64 + "&relationship=friend"
-        resp = requests.get(url).text
+        #resp = requests.get(url).text
+        resp = api_call(url)
 
         jsonResp = json.loads(resp)
 
@@ -82,7 +85,8 @@ def get_player_summaries(steamID64List):
     fullSteamIDsString = ",".join(steamID64List)
 
     url = "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" + APIKEY + "&steamIDS=" + fullSteamIDsString
-    response = requests.get(url).text
+    #response = requests.get(url).text
+    response = api_call(url)
     jsonResp = json.loads(response)
 
     returnUserList = []
@@ -148,7 +152,7 @@ def check_friends(listOfUsers):
                 if checkUser.steamID64 == friend[0]:
 
                     #convert to days
-                    timeFriends = round((time.time() - friend[1])/(60*60*24))
+                    timeFriends = round((time.time() - friend[1])/(60*60*24), 1)
 
                     #make sure they haven't already been logged as friends, the reversal is extremely important
                     if (checkUser.personaName, user.personaName, timeFriends) not in currentFriends:
@@ -165,8 +169,28 @@ def hours_played_key(itemToCheck):
     return itemToCheck[1]
 
 
+def api_call(url):
+    """
+    All API calls get passed through here so the program can have a single way to keep track of how long api calls
+    are taking
+    """
+
+    startTime = time.time()
+    respText = requests.get(url).text
+    totalTime = round(time.time() - startTime, 2)
+
+    with open("apiCalls.txt", "a") as f:
+        f.write(str(totalTime) + "s" + " -- " +  url + "\n")
+
+    #debug only, print api call too
+    print(str(totalTime) + "s", "--", url)
+
+    return respText
 
 
+
+#reset apiCalls file
+open("apiCalls.txt", "w").close()
 
 with open("status.txt", "r") as f:
     status = f.read()
@@ -189,7 +213,7 @@ for user in usersList:
 #sort by hours played
 printTupleList.sort(key=hours_played_key)
 
-print("\n\n")
+print("\n")
 print(tabulate.tabulate(printTupleList, headers=["Name", "HRS", "YR"], tablefmt="orgtbl"))
 
 print("\n")
